@@ -2,6 +2,7 @@ data_mining/*
 machine_learning/*
 natural_language_progress/*
 optimization/*
+
 .idea/*
 *.pyc
 .history
@@ -9,3 +10,8 @@ __pycache__
 .output/*
 .vscode
 .git
+
+deep_learning/__pycache__
+deep_learning/.vscode
+deep_learning/hw_1/dataset/*
+deep_learning/outpus/*

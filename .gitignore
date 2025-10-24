@@ -8,3 +8,4 @@ __pycache__
 *.zip
 data/
 dataset/
+*.DS_Store

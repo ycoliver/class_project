@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 import time
 import argparse
-
+from model_utils import *
 def show_sample(train_loader):
     """展示 10 个样本"""
     class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
@@ -32,116 +32,10 @@ def show_sample(train_loader):
 
     plt.suptitle("CIFAR-10 Sample Images", fontsize=16)
     plt.tight_layout()
-    plt.savefig('./outputs/cifar/outputs/cifar10_samples.png', dpi=150, bbox_inches='tight')
+    plt.savefig('./outputs/cifar/cifar10_samples.png', dpi=150, bbox_inches='tight')
     plt.close()
     print("Sample images saved to cifar10_samples.png")
 
-
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, 
-                               stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        
-        # Shortcut connection
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, 
-                         stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
-    
-    def forward(self, x):
-        identity = self.shortcut(x)
-        
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = F.relu(out)
-        
-        out = self.conv2(out)
-        out = self.bn2(out)
-        
-        out += identity  # 残差连接
-        out = F.relu(out)
-        
-        return out
-
-
-class CNNBase(nn.Module):
-    def __init__(self, 
-                 base_layer_num=2,
-                 base_hidden_dim=1,
-                 pooling_type=False,
-                 is_resnet=False):
-        super(CNNBase, self).__init__()
-        
-        self.base_layer_num = base_layer_num
-        self.base_hidden_dim = base_hidden_dim
-        self.pooling_type = 'max' if pooling_type == False else 'mean'
-        self.is_resnet = is_resnet
-        self.channels = [3, 6 * base_hidden_dim, 16 * base_hidden_dim]
-        if base_layer_num > 2:
-            for i in range(base_layer_num - 2):
-                next_channel = self.channels[-1] * 2
-                self.channels.append(next_channel)
-        self.conv_layers = nn.ModuleList()
-        
-        if is_resnet:
-            for i in range(base_layer_num):
-                in_ch = self.channels[i]
-                out_ch = self.channels[i + 1]
-                self.conv_layers.append(ResidualBlock(in_ch, out_ch, stride=1))
-        else:
-            for i in range(base_layer_num):
-                in_ch = self.channels[i]
-                out_ch = self.channels[i + 1]
-                conv_block = nn.Sequential(
-                    nn.Conv2d(in_ch, out_ch, kernel_size=5, padding=2),
-                    nn.BatchNorm2d(out_ch),
-                    nn.ReLU()
-                )
-                self.conv_layers.append(conv_block)
-
-        if self.pooling_type == 'max':
-            self.pool = nn.MaxPool2d(2, 2)
-        elif self.pooling_type == 'mean':
-            self.pool = nn.AvgPool2d(2, 2)
-        else:
-            raise ValueError(f"Unknown pooling type: {self.pooling_type}")
-        
-        feature_size = 32 // (2 ** base_layer_num)
-        fc_input_dim = self.channels[-1] * feature_size * feature_size
-
-        self.fc_layers = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(fc_input_dim, 120 * base_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(120 * base_hidden_dim, 84 * base_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(84 * base_hidden_dim, 10)
-        )
-    
-    def forward(self, x):
-
-        for conv_layer in self.conv_layers:
-            x = conv_layer(x)
-            x = self.pool(x)
-
-        x = self.fc_layers(x)
-        return x
-    
-    def get_config_str(self):
-        return (f"layers{self.base_layer_num}_"
-                f"dim{self.base_hidden_dim}x_"
-                f"{self.pooling_type}pool_"
-                f"{'resnet' if self.is_resnet else 'plain'}")
 
 
 def train(model, train_loader, test_loader, criterion, optimizer, 
@@ -324,9 +218,9 @@ def main(args):
     
     print("Loading CIFAR-10 dataset...")
     
-    train_dataset = datasets.CIFAR10(root='dataset/cifar', train=True, 
+    train_dataset = datasets.CIFAR10(root='/Users/daixunlian/workspace/class_project/deep_learning/hw_1/dataset/cifar', train=True, 
                                      download=True, transform=transform)
-    test_dataset = datasets.CIFAR10(root='dataset/cifar', train=False, 
+    test_dataset = datasets.CIFAR10(root='/Users/daixunlian/workspace/class_project/deep_learning/hw_1/dataset/cifar', train=False, 
                                     download=True, transform=transform)
     
     train_loader = DataLoader(dataset=train_dataset, batch_size=64, 
@@ -349,10 +243,11 @@ def main(args):
     print(f"# Experiment: {args.exp_name}")
     print(f"{'#'*60}")
     
-    model = CNNBase(base_layer_num=args.layer_num,
-                    base_hidden_dim=args.hidden_dim,
+    model = CNNBase(is_large_layer=args.is_large_layer,
+                    is_large_hidden=args.is_large_hidden,
                     pooling_type=args.mean_pooling,
-                    is_resnet=args.is_resnet).to(device)
+                    is_resnet=args.is_resnet,
+                    label_num=10).to(device)
     
     criterion = nn.CrossEntropyLoss()
     if args.use_adam:
@@ -387,8 +282,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name',type=str,default='base_experiment')
-    parser.add_argument('--hidden_dim',type=int,default=1)
-    parser.add_argument('--layer_num',type=int,default=2)
+    parser.add_argument('--is_large_layer',action='store_true',default=False)
+    parser.add_argument('--is_large_hidden',action='store_true',default=False)
     parser.add_argument('--mean_pooling',action='store_true',default=False)
     parser.add_argument('--is_resnet',action='store_true',default=False)
     parser.add_argument('--is_l2_loss',action='store_true',default=False)

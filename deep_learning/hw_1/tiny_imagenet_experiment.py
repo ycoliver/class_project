@@ -15,15 +15,33 @@ import argparse
 import json
 from Imagenet_loader import TinyImageNet
 from model_utils import *
+
+
+# 训练函数 - 添加早停机制
+
 def train(model, train_loader, test_loader, criterion, optimizer, 
           epochs, device, save_dir, is_l2_loss=False, l2_lambda=0.001,
-          config_name="base"):
-
+          config_name="base", patience=10):
+    """
+    训练函数，支持早停机制
+    
+    Args:
+        patience: 早停的耐心值，如果连续patience个epoch准确率没有提升则停止训练
+    """
     model.train()
-
+    
+    # 记录训练历史
     train_losses = []
     test_accuracies = []
     best_acc = 0.0
+    best_epoch = 0
+    epochs_no_improve = 0  # 记录连续多少个epoch没有提升
+    
+    print(f"\n{'='*60}")
+    print(f"训练配置: {config_name}")
+    print(f"L2正则化: {'是 (λ=' + str(l2_lambda) + ')' if is_l2_loss else '否'}")
+    print(f"早停机制: 启用 (patience={patience})")
+    print(f"{'='*60}\n")
     
     for epoch in range(epochs):
         model.train()
@@ -53,7 +71,7 @@ def train(model, train_loader, test_loader, criterion, optimizer,
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            if batch_idx % 1 == 0:
+            if batch_idx % 100 == 0:
                 avg_loss = running_loss / 100
                 train_acc = 100 * correct / total
                 print(f'Epoch: {epoch+1}/{epochs} | '
@@ -62,13 +80,19 @@ def train(model, train_loader, test_loader, criterion, optimizer,
                       f'Train Acc: {train_acc:.2f}%')
                 running_loss = 0.0
 
+        # 评估模型
         test_acc = evaluate(model, test_loader, device)
         test_accuracies.append(test_acc)
         
-        print(f'\nEpoch {epoch+1} Complete - Test Accuracy: {test_acc:.2f}%\n')
+        print(f'\nEpoch {epoch+1} 完成 - 测试准确率: {test_acc:.2f}%')
         
+        # 检查是否有提升
         if test_acc > best_acc:
             best_acc = test_acc
+            best_epoch = epoch
+            epochs_no_improve = 0  # 重置计数器
+            
+            # 保存最佳模型
             save_path = os.path.join(save_dir, f'best_{config_name}.pth')
             torch.save({
                 'epoch': epoch,
@@ -76,9 +100,23 @@ def train(model, train_loader, test_loader, criterion, optimizer,
                 'optimizer_state_dict': optimizer.state_dict(),
                 'accuracy': test_acc,
             }, save_path)
-            print(f'Best model saved with accuracy: {test_acc:.2f}%')
+            print(f'✓ 最佳模型已保存，准确率: {test_acc:.2f}%')
+        else:
+            epochs_no_improve += 1
+            print(f'准确率未提升 ({epochs_no_improve}/{patience})')
+            
+            # 早停检查
+            if epochs_no_improve >= patience and epoch >= 100:
+                print(f'\n{"="*60}')
+                print(f'早停触发！连续{patience}个epoch准确率未提升')
+                print(f'最佳准确率: {best_acc:.2f}% (Epoch {best_epoch+1})')
+                print(f'{"="*60}\n')
+                break
+        
+        print()  # 空行分隔
 
-        if (epoch + 1) % 10 == 0:
+        # 定期保存检查点
+        if (epoch + 1) % 50 == 0:
             save_path = os.path.join(save_dir, f'{config_name}_epoch{epoch+1}.pth')
             torch.save({
                 'epoch': epoch,
@@ -86,15 +124,23 @@ def train(model, train_loader, test_loader, criterion, optimizer,
                 'optimizer_state_dict': optimizer.state_dict(),
                 'accuracy': test_acc,
             }, save_path)
+            print(f'检查点已保存: epoch {epoch+1}')
+    
+    # 训练结束总结
+    print(f'\n{"="*60}')
+    print(f'训练完成！')
+    print(f'最终epoch: {epoch+1}')
+    print(f'最佳准确率: {best_acc:.2f}% (Epoch {best_epoch+1})')
+    print(f'{"="*60}\n')
     
     return test_accuracies, best_acc
 
 
+# 评估函数
 def evaluate(model, test_loader, device):
     model.eval()
     correct = 0
     total = 0
-    
     with torch.no_grad():
         for inputs, labels in test_loader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -102,17 +148,49 @@ def evaluate(model, test_loader, device):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-    
     accuracy = 100 * correct / total
     return accuracy
 
 
-def detailed_test(model, test_loader, device, classes):
+# 详细测试函数 - 支持加载最佳模型
+def detailed_test(model, test_loader, device, classes, save_path=None):
+    """
+    详细测试函数 - 支持加载最佳模型
+    
+    Args:
+        model: 模型实例
+        test_loader: 测试数据加载器
+        device: 设备
+        classes: 类别名称列表 (200个类别)
+        save_path: 最佳模型保存路径，如果提供则先加载模型
+    """
+    
+    # 如果提供了save_path，先加载最佳模型
+    if save_path is not None:
+        print(f"\n{'='*60}")
+        print(f"加载最佳模型: {save_path}")
+        print(f"{'='*60}")
+        
+        if os.path.exists(save_path):
+            checkpoint = torch.load(save_path, map_location=device)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            saved_acc = checkpoint.get('accuracy', 'N/A')
+            saved_epoch = checkpoint.get('epoch', 'N/A')
+            print(f"✓ 模型加载成功")
+            print(f"  - 训练epoch: {saved_epoch + 1 if isinstance(saved_epoch, int) else saved_epoch}")
+            print(f"  - 保存时准确率: {saved_acc if isinstance(saved_acc, str) else f'{saved_acc:.2f}%'}")
+            print(f"{'='*60}\n")
+        else:
+            print(f"⚠ 警告: 模型文件不存在，使用当前模型状态")
+            print(f"{'='*60}\n")
+    
+    # 开始详细测试
     model.eval()
-    class_correct = [0] * 10
-    class_total = [0] * 10
+    class_correct = [0] * 200  # Tiny ImageNet有200个类别
+    class_total = [0] * 200
     y_trues, y_preds = [], []
     
+    print("正在进行详细测试...")
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
@@ -128,31 +206,37 @@ def detailed_test(model, test_loader, device, classes):
                 class_correct[label] += c[i].item()
                 class_total[label] += 1
     
-    for i in range(10):
+    print("\n" + "="*50)
+    print("各类别准确率 (前20个类别):")
+    print("="*50)
+    for i in range(min(20, len(classes))):
         if class_total[i] > 0:
             acc = 100 * class_correct[i] / class_total[i]
             print(f'{classes[i]:12s}: {acc:5.2f}% ({class_correct[i]}/{class_total[i]})')
-
+    
     overall_acc = 100 * sum(class_correct) / sum(class_total)
-    print(f'\nOverall Accuracy: {overall_acc:.2f}%')
-    print(classification_report(y_trues, y_preds, target_names=classes))
+    print(f'\n总体准确率: {overall_acc:.2f}%')
+    
+    print("\n" + "="*50)
+    print("分类报告 (前20个类别):")
+    print("="*50)
+    print(classification_report(y_trues, y_preds, target_names=classes[:20]))
     
     return y_trues, y_preds, overall_acc
-
-
+# 可视化函数
 def plot_confusion_matrix(y_trues, y_preds, classes, save_path):
+    # 由于类别太多(200个)，我们只显示前20个类别的混淆矩阵
     cm = confusion_matrix(y_trues, y_preds)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
     
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(15, 15))
     disp.plot(cmap=plt.cm.Blues, ax=ax)
     plt.xticks(rotation=45, ha='right')
-    plt.title("Confusion Matrix", fontsize=14)
+    plt.title("混淆矩阵 (Tiny ImageNet)", fontsize=14)
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"Confusion matrix saved to {save_path}")
-
+    plt.show()
+    print(f"混淆矩阵已保存到 {save_path}")
 
 def plot_training_history(history_dict, save_path):
     plt.figure(figsize=(12, 6))
@@ -163,13 +247,14 @@ def plot_training_history(history_dict, save_path):
     
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('Test Accuracy (%)', fontsize=12)
-    plt.title('Test Accuracy Comparison Across Configurations', fontsize=14)
+    plt.title('不同配置的测试准确率比较 (Tiny ImageNet)', fontsize=14)
     plt.legend(fontsize=10)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"Training history plot saved to {save_path}")
+    plt.show()
+    print(f"训练历史图已保存到 {save_path}")
+
 
 
 def tiny_loader(batch_size, data_dir):
@@ -195,7 +280,7 @@ def main(args):
     
     print("Loading tiny_imagenet-200 dataset...")
     
-    train_loader, test_loader = tiny_loader(64, './dataset/tiny-imagenet-200')
+    train_loader, test_loader = tiny_loader(512, './dataset/tiny-imagenet-200')
 
     train_dir = './dataset/tiny-imagenet-200/train'
     classes = sorted([name for name in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, name))])
@@ -205,7 +290,7 @@ def main(args):
     print(f"\nUsing device: {device}")
     save_dir = './outputs/tiny_imagenet/checkpoints'
     os.makedirs(save_dir, exist_ok=True)
-    num_epochs = 20
+    num_epochs = 100
     learning_rate = 0.001
     
     model = CNNBase(is_large_hidden=args.is_large_hidden,
@@ -235,13 +320,19 @@ def main(args):
     training_time = time.time() - start_time
     
     # 详细测试
-    y_trues, y_preds, final_acc = detailed_test(model, test_loader, device, classes)
+    y_trues, y_preds, final_acc = detailed_test(model, test_loader, device, classes, save_path=os.path.join(save_dir, f'best_{config_name}.pth'))
     
     # 保存混淆矩阵
     cm_path = f'./outputs/tiny_imagenet/confusion_matrix_{config_name}.png'
     plot_confusion_matrix(y_trues, y_preds, classes, cm_path)
     print('*'*20)
     print(f"\nFinal Accuracy of The experiment: {args.exp_name} is {final_acc:.2f}%")
+    with open('./outputs/tiny_imagenet/experiment_results.txt', 'a') as f:
+        f.write(f"Experiment: {args.exp_name}, Final Accuracy: {final_acc:.2f}%, Training Time: {training_time:.2f} seconds\n")
+    cm_path = f'./outputs/tiny_imagenet/confusion_matrix_{config_name}.png'
+    plot_confusion_matrix(y_trues, y_preds, classes, cm_path)
+    
+    # 保存结果到文件
     with open('./outputs/tiny_imagenet/experiment_results.txt', 'a') as f:
         f.write(f"Experiment: {args.exp_name}, Final Accuracy: {final_acc:.2f}%, Training Time: {training_time:.2f} seconds\n")
 

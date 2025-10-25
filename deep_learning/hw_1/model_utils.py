@@ -3,12 +3,12 @@ import torch.nn.functional as F
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1):
         super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3,
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
                                stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3,
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size,
                                stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
         
@@ -43,38 +43,74 @@ class CNNBase(nn.Module):
                  is_large_hidden=False,
                  is_large_layer=False,
                  label_num=10,
-                 input_size=32):
+                 input_size=32,
+                 is_imagenet=False,
+                 is_large_kernel=False):
         super(CNNBase, self).__init__()
         self.pooling_type = 'max' if not pooling_type else 'mean'
         self.is_resnet = is_resnet
         self.is_large_hidden = is_large_hidden
         self.is_large_layer = is_large_layer
         self.input_size = input_size
-        
+        self.conv_kernel_size = 5 if is_large_kernel else 3
         multiplier = 2 if is_large_hidden else 1
-        
-        if is_large_layer:
-            self.channels = [3, 128*multiplier, 256*multiplier, 512*multiplier,
-                           512*multiplier, 512*multiplier, 512*multiplier, 256*multiplier]
-            self.num_layers = 7
-            self.pool_after = [0, 1, 6]
+        multiplier = 4 if is_imagenet else multiplier # imagenet * 2 hidden size
+        if is_imagenet:
+            # ImageNet 配置
+            if is_large_layer:
+                # 18层配置
+                self.channels = [
+                    3, 
+                    64*multiplier, 128*multiplier, 128*multiplier,      # 前3层
+                    256*multiplier, 256*multiplier, 256*multiplier,     # 中前3层
+                    512*multiplier, 512*multiplier, 512*multiplier,     # 中间3层
+                    512*multiplier, 512*multiplier, 512*multiplier,     # 中后3层
+                    512*multiplier, 512*multiplier,                      # 深层2层
+                    256*multiplier, 128*multiplier, 64*multiplier        # 恢复3层
+                ]
+                self.num_layers = 18
+                self.pool_after = [0, 2, 5, 8, 11, 14, 17]  # 在多个位置做池化
+            else:
+                # 12层配置
+                self.channels = [
+                    3,
+                    64*multiplier, 128*multiplier, 128*multiplier,      # 前3层
+                    256*multiplier, 256*multiplier, 256*multiplier,     # 中前3层
+                    512*multiplier, 512*multiplier, 512*multiplier,     # 中间3层
+                    256*multiplier, 128*multiplier, 64*multiplier       # 恢复3层
+                ]
+                self.num_layers = 12
+                self.pool_after = [0, 2, 5, 8, 11]  # 在关键位置做池化
         else:
-            self.channels = [3, 128*multiplier, 256*multiplier, 512*multiplier,
-                           512*multiplier, 256*multiplier]
-            self.num_layers = 5
-            self.pool_after = [0, 1, 4]
-        
+            # 非ImageNet配置（原有配置）
+            if is_large_layer:
+                self.channels = [
+                    3, 
+                    128*multiplier, 256*multiplier, 512*multiplier,
+                    512*multiplier, 512*multiplier, 512*multiplier, 
+                    256*multiplier
+                ]
+                self.num_layers = 7
+                self.pool_after = [0, 1, 6]
+            else:
+                self.channels = [
+                    3, 
+                    128*multiplier, 256*multiplier, 512*multiplier,
+                    512*multiplier, 256*multiplier
+                ]
+                self.num_layers = 5
+                self.pool_after = [0, 1, 4]
         self.conv_layers = nn.ModuleList()
         if is_resnet:
             for i in range(self.num_layers):
                 self.conv_layers.append(
-                    ResidualBlock(self.channels[i], self.channels[i + 1], stride=1)
+                    ResidualBlock(self.channels[i], self.channels[i + 1], kernel_size=self.conv_kernel_size, stride=1)
                 )
         else:
             for i in range(self.num_layers):
                 self.conv_layers.append(nn.Sequential(
                     nn.Conv2d(self.channels[i], self.channels[i + 1],
-                             kernel_size=3, padding=1),
+                             kernel_size=self.conv_kernel_size, padding=1),
                     nn.ReLU(inplace=True)
                 ))
         

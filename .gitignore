@@ -9,3 +9,7 @@ __pycache__
 data/
 dataset/
 *.DS_Store
+*.jpg
+*.png
+coffee/*
+weather/*

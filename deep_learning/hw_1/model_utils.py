@@ -54,52 +54,35 @@ class CNNBase(nn.Module):
         self.input_size = input_size
         self.conv_kernel_size = 5 if is_large_kernel else 3
         multiplier = 2 if is_large_hidden else 1
-        multiplier = 4 if is_imagenet else multiplier # imagenet * 2 hidden size
+        multiplier = 4 if is_imagenet else multiplier
+        
         if is_imagenet:
-            # ImageNet 配置
             if is_large_layer:
-                # 18层配置
-                self.channels = [
-                    3, 
-                    64*multiplier, 128*multiplier, 128*multiplier,      # 前3层
-                    256*multiplier, 256*multiplier, 256*multiplier,     # 中前3层
-                    512*multiplier, 512*multiplier, 512*multiplier,     # 中间3层
-                    512*multiplier, 512*multiplier, 512*multiplier,     # 中后3层
-                    512*multiplier, 512*multiplier,                      # 深层2层
-                    256*multiplier, 128*multiplier, 64*multiplier        # 恢复3层
-                ]
+                self.channels = [3, 128*multiplier, 128*multiplier, 128*multiplier, 
+                               256*multiplier, 256*multiplier, 256*multiplier,
+                               512*multiplier, 512*multiplier, 512*multiplier, 512*multiplier,
+                               512*multiplier, 512*multiplier, 512*multiplier,
+                               512*multiplier, 256*multiplier, 256*multiplier, 256*multiplier, 256*multiplier]
                 self.num_layers = 18
-                self.pool_after = [0, 2, 5, 8, 11, 14, 17]  # 在多个位置做池化
+                self.pool_after = [0, 3, 7, 17]
             else:
-                # 12层配置
-                self.channels = [
-                    3,
-                    64*multiplier, 128*multiplier, 128*multiplier,      # 前3层
-                    256*multiplier, 256*multiplier, 256*multiplier,     # 中前3层
-                    512*multiplier, 512*multiplier, 512*multiplier,     # 中间3层
-                    256*multiplier, 128*multiplier, 64*multiplier       # 恢复3层
-                ]
+                self.channels = [3, 128*multiplier, 128*multiplier, 256*multiplier, 256*multiplier, 
+                               512*multiplier, 512*multiplier, 512*multiplier, 512*multiplier,
+                               512*multiplier, 256*multiplier, 256*multiplier, 256*multiplier]
                 self.num_layers = 12
-                self.pool_after = [0, 2, 5, 8, 11]  # 在关键位置做池化
+                self.pool_after = [0, 2, 5, 11]
         else:
-            # 非ImageNet配置（原有配置）
             if is_large_layer:
-                self.channels = [
-                    3, 
-                    128*multiplier, 256*multiplier, 512*multiplier,
-                    512*multiplier, 512*multiplier, 512*multiplier, 
-                    256*multiplier
-                ]
+                self.channels = [3, 128*multiplier, 256*multiplier, 512*multiplier,
+                               512*multiplier, 512*multiplier, 512*multiplier, 256*multiplier]
                 self.num_layers = 7
                 self.pool_after = [0, 1, 6]
             else:
-                self.channels = [
-                    3, 
-                    128*multiplier, 256*multiplier, 512*multiplier,
-                    512*multiplier, 256*multiplier
-                ]
+                self.channels = [3, 128*multiplier, 256*multiplier, 512*multiplier,
+                               512*multiplier, 256*multiplier]
                 self.num_layers = 5
                 self.pool_after = [0, 1, 4]
+        
         self.conv_layers = nn.ModuleList()
         if is_resnet:
             for i in range(self.num_layers):
@@ -153,9 +136,9 @@ class CNNBase(nn.Module):
                 x = self.conv_dropout(x)
         x = self.fc_layers(x)
         return x
+    
     def get_config_str(self):
         return (f"layers{self.base_layer_num}_"
                 f"dim{self.base_hidden_dim}x_"
-                f"{self.pooling_type}pool_"
+                f"{self.pooling_type}_"
                 f"{'resnet' if self.is_resnet else 'plain'}")
-

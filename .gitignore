@@ -13,3 +13,4 @@ dataset/
 *.png
 coffee/*
 weather/*
+.DS_Store

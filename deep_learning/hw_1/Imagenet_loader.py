@@ -84,18 +84,11 @@ class TinyImageNet(Dataset):
             list_of_dirs = [target for target in self.class_to_tgt_idx.keys()]
         else:
             img_root_dir = self.val_dir
-            # 对于验证集，需要遍历所有类别目录
-            list_of_dirs = [target for target in self.class_to_tgt_idx.keys()]
+            list_of_dirs = ["images"]
 
         for tgt in list_of_dirs:
-            if Train:
-                dirs = os.path.join(img_root_dir, tgt)
-            else:
-                # 验证集：每个类别目录下有images子目录
-                dirs = os.path.join(img_root_dir, tgt, "images")
-            
+            dirs = os.path.join(img_root_dir, tgt)
             if not os.path.isdir(dirs):
-                print(f"Warning: Directory {dirs} does not exist, skipping...")
                 continue
 
             for root, _, files in sorted(os.walk(dirs)):
@@ -105,15 +98,8 @@ class TinyImageNet(Dataset):
                         if Train:
                             item = (path, self.class_to_tgt_idx[tgt])
                         else:
-                            # 验证集需要根据文件名查找对应的类别
-                            if fname in self.val_img_to_class:
-                                item = (path, self.class_to_tgt_idx[self.val_img_to_class[fname]])
-                            else:
-                                print(f"Warning: Image {fname} not found in val_annotations.txt, skipping...")
-                                continue
+                            item = (path, self.class_to_tgt_idx[self.val_img_to_class[fname]])
                         self.images.append(item)
-        
-        print(f"Loaded {len(self.images)} images for {'training' if Train else 'validation'}")
 
     def return_label(self, idx):
         return [self.class_to_label[self.tgt_idx_to_class[i.item()]] for i in idx]

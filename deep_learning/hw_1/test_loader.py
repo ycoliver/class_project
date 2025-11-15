@@ -74,3 +74,4 @@ def test_tiny_imagenet_loader():
 
 if __name__ == "__main__":
     test_tiny_imagenet_loader()
+

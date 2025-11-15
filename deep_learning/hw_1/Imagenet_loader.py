@@ -14,10 +14,8 @@ class TinyImageNet(Dataset):
         self.train_dir = os.path.join(self.root_dir, "train")
         self.val_dir = os.path.join(self.root_dir, "val")
 
-        if (self.Train):
-            self._create_class_idx_dict_train()
-        else:
-            self._create_class_idx_dict_val()
+        self._create_class_idx_dict_train()
+
 
         self._make_dataset(self.Train)
 
@@ -46,7 +44,8 @@ class TinyImageNet(Dataset):
             classes = [d for d in os.listdir(self.train_dir) if os.path.isdir(os.path.join(self.train_dir, d))]
         classes = sorted(classes)
         num_images = 0
-        for root, dirs, files in os.walk(self.train_dir):
+        os_dir = self.train_dir if self.Train else self.val_dir
+        for root, dirs, files in os.walk(os_dir):
             for f in files:
                 if f.endswith(".JPEG"):
                     num_images = num_images + 1
@@ -56,35 +55,14 @@ class TinyImageNet(Dataset):
         self.tgt_idx_to_class = {i: classes[i] for i in range(len(classes))}
         self.class_to_tgt_idx = {classes[i]: i for i in range(len(classes))}
 
-    def _create_class_idx_dict_val(self):
-        # 从训练集获取所有类别信息
-        if sys.version_info >= (3, 5):
-            classes = [d.name for d in os.scandir(self.train_dir) if d.is_dir()]
-        else:
-            classes = [d for d in os.listdir(self.train_dir) if os.path.isdir(os.path.join(self.train_dir, d))]
-        classes = sorted(classes)
-        self.class_to_tgt_idx = {classes[i]: i for i in range(len(classes))}
-        self.tgt_idx_to_class = {i: classes[i] for i in range(len(classes))}
-        
-        # 读取验证集标注文件
-        val_annotations_file = os.path.join(self.val_dir, "val_annotations.txt")
-        self.val_img_to_class = {}
-        with open(val_annotations_file, 'r') as fo:
-            entry = fo.readlines()
-            for data in entry:
-                words = data.split("\t")
-                self.val_img_to_class[words[0]] = words[1]
-        
-        self.len_dataset = len(list(self.val_img_to_class.keys()))
-
     def _make_dataset(self, Train=True):
         self.images = []
-        if Train:
+        if Train: 
             img_root_dir = self.train_dir
             list_of_dirs = [target for target in self.class_to_tgt_idx.keys()]
         else:
             img_root_dir = self.val_dir
-            list_of_dirs = ["images"]
+            list_of_dirs = [target for target in self.class_to_tgt_idx.keys()]
 
         for tgt in list_of_dirs:
             dirs = os.path.join(img_root_dir, tgt)
@@ -95,10 +73,7 @@ class TinyImageNet(Dataset):
                 for fname in sorted(files):
                     if (fname.endswith(".JPEG")):
                         path = os.path.join(root, fname)
-                        if Train:
-                            item = (path, self.class_to_tgt_idx[tgt])
-                        else:
-                            item = (path, self.class_to_tgt_idx[self.val_img_to_class[fname]])
+                        item = (path, self.class_to_tgt_idx[tgt])
                         self.images.append(item)
 
     def return_label(self, idx):

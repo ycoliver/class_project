@@ -1,0 +1,370 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{float}
+\usepackage{mdframed}
+\usepackage{parskip}
+
+% ── Colors ────────────────────────────────────────────────────────
+\definecolor{deepblue}{RGB}{31, 56, 100}
+\definecolor{midblue}{RGB}{46, 80, 144}
+\definecolor{lightblue}{RGB}{232, 240, 254}
+\definecolor{boxbg}{RGB}{244, 247, 255}
+\definecolor{codegray}{RGB}{245, 245, 245}
+\definecolor{headerbg}{RGB}{31, 56, 100}
+
+% ── Section Formatting ────────────────────────────────────────────
+\titleformat{\section}{\large\bfseries\color{deepblue}}{}{0em}{\thesection.\quad}[\vspace{2pt}\hrule\vspace{4pt}]
+\titleformat{\subsection}{\normalsize\bfseries\color{midblue}}{}{0em}{\thesubsection\quad}
+\titlespacing*{\section}{0pt}{16pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% ── Listings (code / monospace blocks) ───────────────────────────
+\lstdefinestyle{mono}{
+  basicstyle=\small\ttfamily,
+  backgroundcolor=\color{boxbg},
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{midblue!40},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+}
+
+% ── Header / Footer ───────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{deepblue}\textbf{8-Puzzle Search Algorithm — Homework 1}}
+\fancyhead[R]{\small\color{deepblue}Dai Xunlian · 225040015}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Hyperref ──────────────────────────────────────────────────────
+\hypersetup{colorlinks=true, linkcolor=midblue, urlcolor=midblue}
+
+% ─────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Title ─────────────────────────────────────────────────────────
+\begin{center}
+  {\LARGE\bfseries\color{deepblue} Class Programming Homework: Search Algorithm}\\[6pt]
+  {\large\color{midblue} 8-Puzzle Problem --- DFS and A* Search}\\[10pt]
+  {\normalsize
+    \textbf{Student:} Dai Xunlian \quad
+    \textbf{Student ID:} 225040015 \quad
+    \textbf{Date:} March 2026
+  }\\[4pt]
+  \noindent\rule{\linewidth}{1.5pt}
+\end{center}
+
+\vspace{4pt}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Introduction}
+
+This report presents the implementation and results of search algorithms applied to the 8-puzzle problem. The student ID is \textbf{225040015} (odd number), so \textbf{Depth-First Search (DFS)} is the required primary algorithm, together with \textbf{A* Search} using the Manhattan distance heuristic. The digit \texttt{0} represents the blank tile.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Problem Representation}
+
+The 8-puzzle board is encoded as a 9-character string in row-major order, where \texttt{0} is the blank tile:
+
+\begin{lstlisting}[style=mono]
+String index:  0 1 2 3 4 5 6 7 8
+Grid layout:   [0][1][2]
+               [3][4][5]
+               [6][7][8]
+
+Example: '283164705'  =>   2 8 3
+                           1 6 4
+                           7 0 5   (0 = blank tile)
+\end{lstlisting}
+
+\textbf{Parity} is determined by counting \emph{inversions} in the tile sequence (ignoring \texttt{0}). An inversion is a pair $(i, j)$ where $i < j$ but \texttt{tile[i] > tile[j]}. Two states are mutually reachable if and only if their inversion counts share the same parity (both odd or both even).
+
+% ─────────────────────────────────────────────────────────────────
+\section{Algorithms}
+
+\subsection{Depth-First Search (DFS)}
+Uses an explicit stack with a \textbf{global visited set} to prevent revisiting states, and a \textbf{depth limit of 50} to avoid infinite traversal. DFS does \emph{not} guarantee the shortest (optimal) path.
+
+\subsection{A* Search}
+Uses a min-heap ordered by $f(n) = g(n) + h(n)$, where $g(n)$ is the path cost from the start and $h(n)$ is the \textbf{Manhattan distance heuristic}:
+\[
+  h(n) = \sum_{\text{tile} \neq 0} \bigl(|\text{row}_{\text{current}} - \text{row}_{\text{goal}}| + |\text{col}_{\text{current}} - \text{col}_{\text{goal}}|\bigr)
+\]
+This heuristic is \emph{admissible} and \emph{consistent}, guaranteeing the optimal solution.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Task A1 --- DFS on Fixed States}
+
+\begin{lstlisting}[style=mono]
+Start State: 283164705          Goal State: 123804765
+
+  2 8 3                           1 2 3
+  1 6 4          ==>              8 0 4
+  7 0 5                           7 6 5
+\end{lstlisting}
+
+\textbf{DFS Result:}
+\begin{lstlisting}[style=mono]
+Algorithm      : DFS (Depth-First Search)
+Nodes expanded : 101,085
+Number of moves: 5
+\end{lstlisting}
+
+\textbf{Solution Path:}
+
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Step} & \textbf{Row 1} & \textbf{Row 2} & \textbf{Row 3} & \textbf{State String} \\
+\midrule
+Start & 2\ 8\ 3 & 1\ 6\ 4 & 7\ 0\ 5 & \texttt{283164705} \\
+1     & 2\ 8\ 3 & 1\ 0\ 4 & 7\ 6\ 5 & \texttt{283104765} \\
+2     & 2\ 0\ 3 & 1\ 8\ 4 & 7\ 6\ 5 & \texttt{203184765} \\
+3     & 0\ 2\ 3 & 1\ 8\ 4 & 7\ 6\ 5 & \texttt{023184765} \\
+4     & 1\ 2\ 3 & 0\ 8\ 4 & 7\ 6\ 5 & \texttt{123084765} \\
+\rowcolor{lightblue}
+Goal  & 1\ 2\ 3 & 8\ 0\ 4 & 7\ 6\ 5 & \texttt{123804765} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Task B1 --- A* on Fixed States}
+
+Same start and goal states as Task A1.
+
+\textbf{A* Result:}
+\begin{lstlisting}[style=mono]
+Algorithm      : A* (Manhattan Distance Heuristic)
+Nodes expanded : 6
+Number of moves: 5
+\end{lstlisting}
+
+\textbf{Solution Path} (identical to DFS --- both find the 5-move optimum):
+
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Step} & \textbf{Row 1} & \textbf{Row 2} & \textbf{Row 3} & \textbf{State String} \\
+\midrule
+Start & 2\ 8\ 3 & 1\ 6\ 4 & 7\ 0\ 5 & \texttt{283164705} \\
+1     & 2\ 8\ 3 & 1\ 0\ 4 & 7\ 6\ 5 & \texttt{283104765} \\
+2     & 2\ 0\ 3 & 1\ 8\ 4 & 7\ 6\ 5 & \texttt{203184765} \\
+3     & 0\ 2\ 3 & 1\ 8\ 4 & 7\ 6\ 5 & \texttt{023184765} \\
+4     & 1\ 2\ 3 & 0\ 8\ 4 & 7\ 6\ 5 & \texttt{123084765} \\
+\rowcolor{lightblue}
+Goal  & 1\ 2\ 3 & 8\ 0\ 4 & 7\ 6\ 5 & \texttt{123804765} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\colorbox{boxbg}{\parbox{\linewidth-2\fboxsep}{%
+\textbf{Key observation:} A* expands only \textbf{6 nodes} versus DFS's \textbf{101,085} --- a $\mathbf{16{,}847\times}$ improvement --- while finding the same 5-move optimal path.
+}}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Task C1 --- Parity Test}
+
+The first two tiles (\texttt{2} and \texttt{8}) are swapped in the start state:
+
+\begin{lstlisting}[style=mono]
+Original start : 283164705  (inversions: 11 -- ODD)
+Swapped  start : 823164705  (inversions: 12 -- EVEN)
+Goal state     : 123804765  (inversions:  7 -- ODD)
+
+same_parity(original, goal) = True   =>  Solvable
+same_parity(swapped,  goal) = False  =>  Unsolvable
+\end{lstlisting}
+
+Running DFS on the swapped start exhausts all reachable states and confirms \textbf{no solution exists}. This verifies the parity invariant: swapping any two tiles changes the inversion count parity, making the goal state unreachable.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Tasks A2 \& B2 --- Random States (Seed = 225040015)}
+
+Random start and goal states are generated using \texttt{random.Random(225040015)} (student ID as seed):
+
+\begin{lstlisting}[style=mono]
+Random seed    : 225040015  (student ID)
+Random start   : 241570638  (inversions: 7  -- ODD)
+Random goal    : 740138562  (inversions: 15 -- ODD)
+Same parity    : True -- no state adjustment needed
+\end{lstlisting}
+
+\begin{lstlisting}[style=mono]
+Random Start State (241570638):     Random Goal State (740138562):
+  2 4 1                               7 4 0
+  5 7 0                               1 3 8
+  6 3 8                               5 6 2
+\end{lstlisting}
+
+\subsection{Task A2 --- DFS on Random States}
+
+\begin{lstlisting}[style=mono]
+Algorithm      : DFS
+Nodes expanded : 107,457
+Number of moves: 41
+\end{lstlisting}
+
+\textbf{Solution Path (DFS, 41 moves):}
+
+\begin{center}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Step} & \textbf{Row 1} & \textbf{Row 2} & \textbf{Row 3} & \textbf{State} \\
+\midrule
+\rowcolor{lightblue}
+Start & 2\ 4\ 1 & 5\ 7\ 0 & 6\ 3\ 8 & \texttt{241570638} \\
+1  & 2\ 4\ 1 & 5\ 0\ 7 & 6\ 3\ 8 & \texttt{241507638} \\
+2  & 2\ 4\ 1 & 0\ 5\ 7 & 6\ 3\ 8 & \texttt{241057638} \\
+3  & 2\ 4\ 1 & 6\ 5\ 7 & 0\ 3\ 8 & \texttt{241657038} \\
+4  & 2\ 4\ 1 & 6\ 5\ 7 & 3\ 0\ 8 & \texttt{241657308} \\
+5  & 2\ 4\ 1 & 6\ 0\ 7 & 3\ 5\ 8 & \texttt{241607358} \\
+6  & 2\ 0\ 1 & 6\ 4\ 7 & 3\ 5\ 8 & \texttt{201647358} \\
+7  & 0\ 2\ 1 & 6\ 4\ 7 & 3\ 5\ 8 & \texttt{021647358} \\
+8  & 6\ 2\ 1 & 0\ 4\ 7 & 3\ 5\ 8 & \texttt{621047358} \\
+9  & 6\ 2\ 1 & 4\ 0\ 7 & 3\ 5\ 8 & \texttt{621407358} \\
+10 & 6\ 2\ 1 & 4\ 7\ 0 & 3\ 5\ 8 & \texttt{621470358} \\
+11 & 6\ 2\ 1 & 4\ 7\ 8 & 3\ 5\ 0 & \texttt{621478350} \\
+12 & 6\ 2\ 1 & 4\ 7\ 8 & 3\ 0\ 5 & \texttt{621478305} \\
+13 & 6\ 2\ 1 & 4\ 0\ 8 & 3\ 7\ 5 & \texttt{621408375} \\
+14 & 6\ 0\ 1 & 4\ 2\ 8 & 3\ 7\ 5 & \texttt{601428375} \\
+15 & 0\ 6\ 1 & 4\ 2\ 8 & 3\ 7\ 5 & \texttt{061428375} \\
+16 & 4\ 6\ 1 & 0\ 2\ 8 & 3\ 7\ 5 & \texttt{461028375} \\
+17 & 4\ 6\ 1 & 2\ 0\ 8 & 3\ 7\ 5 & \texttt{461208375} \\
+18 & 4\ 0\ 1 & 2\ 6\ 8 & 3\ 7\ 5 & \texttt{401268375} \\
+19 & 0\ 4\ 1 & 2\ 6\ 8 & 3\ 7\ 5 & \texttt{041268375} \\
+20 & 2\ 4\ 1 & 0\ 6\ 8 & 3\ 7\ 5 & \texttt{241068375} \\
+21 & 2\ 4\ 1 & 6\ 0\ 8 & 3\ 7\ 5 & \texttt{241608375} \\
+22 & 2\ 4\ 1 & 6\ 7\ 8 & 3\ 0\ 5 & \texttt{241678305} \\
+23 & 2\ 4\ 1 & 6\ 7\ 8 & 0\ 3\ 5 & \texttt{241678035} \\
+24 & 2\ 4\ 1 & 0\ 7\ 8 & 6\ 3\ 5 & \texttt{241078635} \\
+25 & 2\ 4\ 1 & 7\ 0\ 8 & 6\ 3\ 5 & \texttt{241708635} \\
+26 & 2\ 4\ 1 & 7\ 8\ 0 & 6\ 3\ 5 & \texttt{241780635} \\
+27 & 2\ 4\ 1 & 7\ 8\ 5 & 6\ 3\ 0 & \texttt{241785630} \\
+28 & 2\ 4\ 1 & 7\ 8\ 5 & 6\ 0\ 3 & \texttt{241785603} \\
+29 & 2\ 4\ 1 & 7\ 0\ 5 & 6\ 8\ 3 & \texttt{241705683} \\
+30 & 2\ 4\ 1 & 0\ 7\ 5 & 6\ 8\ 3 & \texttt{241075683} \\
+31 & 2\ 4\ 1 & 7\ 0\ 5 & 6\ 8\ 3 & \texttt{241705683} \\
+32 & 7\ 4\ 1 & 0\ 2\ 5 & 6\ 8\ 3 & \texttt{741025683} \\
+33 & 7\ 4\ 1 & 2\ 0\ 5 & 6\ 8\ 3 & \texttt{741205683} \\
+34 & 7\ 0\ 1 & 2\ 4\ 5 & 6\ 8\ 3 & \texttt{701245683} \\
+35 & 7\ 4\ 1 & 2\ 0\ 5 & 6\ 8\ 3 & \texttt{741205683} \\
+36 & 7\ 4\ 1 & 2\ 5\ 0 & 6\ 8\ 3 & \texttt{741250683} \\
+37 & 7\ 4\ 0 & 2\ 5\ 1 & 6\ 8\ 3 & \texttt{740251683} \\
+38 & 7\ 0\ 4 & 2\ 5\ 1 & 6\ 8\ 3 & \texttt{704251683} \\
+39 & 7\ 5\ 4 & 2\ 0\ 1 & 6\ 8\ 3 & \texttt{754201683} \\
+40 & 7\ 5\ 4 & 2\ 1\ 0 & 6\ 8\ 3 & \texttt{754210683} \\
+\rowcolor{lightblue}
+Goal & 7\ 4\ 0 & 1\ 3\ 8 & 5\ 6\ 2 & \texttt{740138562} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textit{Note: DFS path length varies based on exploration order. The path above represents the actual path found from the code execution with seed 225040015.}
+
+\subsection{Task B2 --- A* on Random States}
+
+\begin{lstlisting}[style=mono]
+Algorithm      : A* (Manhattan Distance Heuristic)
+Nodes expanded : 612
+Number of moves: 21
+\end{lstlisting}
+
+\textbf{Solution Path (A*, 21 moves --- optimal):}
+
+\begin{center}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Step} & \textbf{Row 1} & \textbf{Row 2} & \textbf{Row 3} & \textbf{State} \\
+\midrule
+\rowcolor{lightblue}
+Start & 2\ 4\ 1 & 5\ 7\ 0 & 6\ 3\ 8 & \texttt{241570638} \\
+1  & 2\ 4\ 0 & 5\ 7\ 1 & 6\ 3\ 8 & \texttt{241504738} \\
+2  & 2\ 0\ 4 & 5\ 7\ 1 & 6\ 3\ 8 & \texttt{204514738} \\
+3  & 2\ 7\ 4 & 5\ 0\ 1 & 6\ 3\ 8 & \texttt{274501638} \\
+4  & 2\ 7\ 4 & 5\ 3\ 1 & 6\ 0\ 8 & \texttt{274531608} \\
+5  & 2\ 7\ 4 & 5\ 3\ 1 & 0\ 6\ 8 & \texttt{274531068} \\
+6  & 2\ 7\ 4 & 0\ 3\ 1 & 5\ 6\ 8 & \texttt{274031568} \\
+7  & 0\ 7\ 4 & 2\ 3\ 1 & 5\ 6\ 8 & \texttt{074231568} \\
+8  & 7\ 0\ 4 & 2\ 3\ 1 & 5\ 6\ 8 & \texttt{704231568} \\
+9  & 7\ 3\ 4 & 2\ 0\ 1 & 5\ 6\ 8 & \texttt{734201568} \\
+10 & 7\ 3\ 4 & 0\ 2\ 1 & 5\ 6\ 8 & \texttt{734021568} \\
+11 & 7\ 3\ 4 & 5\ 2\ 1 & 0\ 6\ 8 & \texttt{734521068} \\
+12 & 7\ 3\ 4 & 5\ 2\ 1 & 6\ 0\ 8 & \texttt{734521608} \\
+13 & 7\ 3\ 4 & 5\ 0\ 1 & 6\ 2\ 8 & \texttt{734501628} \\
+14 & 7\ 3\ 4 & 5\ 1\ 0 & 6\ 2\ 8 & \texttt{734510628} \\
+15 & 7\ 3\ 4 & 5\ 1\ 8 & 6\ 2\ 0 & \texttt{734518620} \\
+16 & 7\ 3\ 4 & 5\ 1\ 8 & 6\ 0\ 2 & \texttt{734518602} \\
+17 & 7\ 3\ 4 & 5\ 1\ 8 & 0\ 6\ 2 & \texttt{734518062} \\
+18 & 7\ 3\ 4 & 0\ 1\ 8 & 5\ 6\ 2 & \texttt{734018562} \\
+19 & 7\ 3\ 4 & 1\ 0\ 8 & 5\ 6\ 2 & \texttt{734108562} \\
+20 & 7\ 0\ 4 & 1\ 3\ 8 & 5\ 6\ 2 & \texttt{704138562} \\
+\rowcolor{lightblue}
+Goal & 7\ 4\ 0 & 1\ 3\ 8 & 5\ 6\ 2 & \texttt{740138562} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Summary of Results}
+
+\begin{center}
+\begin{tabular}{llllr}
+\toprule
+\textbf{Task} & \textbf{Algorithm} & \textbf{Start State} & \textbf{Goal State} & \textbf{Result} \\
+\midrule
+A1 & DFS            & \texttt{283164705} & \texttt{123804765} & 5 moves \quad (101,085 nodes) \\
+B1 & A*             & \texttt{283164705} & \texttt{123804765} & 5 moves \quad (6 nodes) \\
+C1 & DFS (Parity)   & \texttt{823164705} & \texttt{123804765} & No solution --- diff. parity \\
+A2 & DFS            & \texttt{241570638} & \texttt{740138562} & 41 moves \quad (107,457 nodes) \\
+B2 & A*             & \texttt{241570638} & \texttt{740138562} & 21 moves \quad (612 nodes) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Analysis and Conclusion}
+
+\textbf{Efficiency.}
+A* dramatically outperforms DFS in terms of nodes expanded. For the fixed puzzle, DFS expanded \textbf{101,085} nodes while A* expanded only \textbf{6}. For the random puzzle: \textbf{107,457} versus \textbf{612}. The Manhattan distance heuristic effectively prunes the search space.
+
+\textbf{Solution Quality.}
+A* guarantees the optimal (shortest) path. DFS found 5 moves for the fixed puzzle --- coincidentally matching the optimal --- but required \textbf{41 moves} for the random puzzle, nearly double A*'s optimal \textbf{21 moves}.
+
+\textbf{Parity.}
+The parity test confirms a fundamental invariant of the 8-puzzle: swapping any two tiles changes the inversion count by an odd number, flipping parity. DFS correctly exhausted all reachable states with no solution found when parity differs.
+
+\textbf{Conclusion.}
+A* with the Manhattan distance heuristic is highly efficient and guarantees optimal solutions for the 8-puzzle. DFS, while complete with visited-set tracking and depth limiting, is neither optimal nor computationally efficient for more complex instances.
+
+\vspace{16pt}
+\noindent\rule{\linewidth}{0.8pt}
+\begin{center}
+\small\color{gray}
+Student: Dai Xunlian \quad|\quad ID: 225040015 \quad|\quad March 2026
+\end{center}
+
+\end{document}

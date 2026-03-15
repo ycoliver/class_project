@@ -1,0 +1,16 @@
+var1,var2,corr
+Enroll,F.Undergrad,0.9646
+Apps,Accept,0.9435
+Accept,Enroll,0.9116
+Top10perc,Top25perc,0.8920
+Accept,F.Undergrad,0.8742
+PhD,Terminal,0.8496
+Apps,Enroll,0.8468
+Apps,F.Undergrad,0.8145
+Outstate,Expend,0.6728
+Top10perc,Expend,0.6609
+Outstate,Room.Board,0.6543
+S.F.Ratio,Expend,-0.5838
+Outstate,Grad.Rate,0.5713
+F.Undergrad,P.Undergrad,0.5705
+Outstate,perc.alumni,0.5663

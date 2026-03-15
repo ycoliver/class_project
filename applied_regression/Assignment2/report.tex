@@ -1,0 +1,142 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{float}
+
+\title{MDS5202 Assignment 2: Applied Regression (Python)}
+\author{}
+\date{January 25, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Dataset and Setup}
+The Auto dataset (n = 392 after removing missing values) was loaded from the ISLR source. The response variable is \texttt{mpg}. All analyses follow the instructions in Assignment 2 using Python (\texttt{statsmodels}, \texttt{pandas}, \texttt{seaborn}).
+
+\section*{Conceptual Questions}
+\subsection*{Question 1 (Conceptual)}
+\textbf{Prompt.} Describe the null hypotheses to which the p-values given in Table 1 correspond. Explain what conclusions you can draw based on those p-values, phrased in terms of sales, TV, radio, and newspaper (not in terms of regression coefficients).
+
+\textbf{Answer.} Table 1 reports p-values for each coefficient in the multiple regression of \texttt{sales} on \texttt{TV}, \texttt{radio}, and \texttt{newspaper} budgets. Each p-value tests the null hypothesis that the corresponding advertising channel has \emph{no linear association with sales}, \emph{holding the other two channels fixed}. Concretely:
+\begin{itemize}
+  \item \textbf{TV:} $H_0$: TV budget has no association with sales (given radio and newspaper). p $< 0.0001$ $\Rightarrow$ strong evidence TV is associated with higher sales.
+  \item \textbf{Radio:} $H_0$: radio budget has no association with sales (given TV and newspaper). p $< 0.0001$ $\Rightarrow$ strong evidence radio is associated with higher sales.
+  \item \textbf{Newspaper:} $H_0$: newspaper budget has no association with sales (given TV and radio). p $= 0.8599$ $\Rightarrow$ no evidence of a linear association with sales once TV and radio are included.
+  \item \textbf{Intercept:} $H_0$: expected sales is zero when all ad budgets are zero. p $< 0.0001$ $\Rightarrow$ baseline sales is significantly different from zero.
+\end{itemize}
+
+\subsection*{Question 5 (Conceptual)}
+\textbf{Prompt.} Consider linear regression without an intercept. The fitted value is $\hat{y}_i = x_i \hat{\beta}$ with
+\[
+\hat{\beta} = \frac{\sum_{i'=1}^n x_{i'} y_{i'}}{\sum_{i'=1}^n x_{i'}^2}.
+\]
+Show that $\hat{y}_i$ can be written as $\sum_{i'=1}^n a_{i'} y_{i'}$. What is $a_{i'}$?
+
+\textbf{Answer.} Substituting the expression for $\hat{\beta}$,
+\[
+\hat{y}_i = x_i \cdot \frac{\sum_{i'=1}^n x_{i'} y_{i'}}{\sum_{i'=1}^n x_{i'}^2}
+= \sum_{i'=1}^n \left(\frac{x_i x_{i'}}{\sum_{j=1}^n x_j^2}\right) y_{i'}.
+\]
+Therefore $a_{i'} = \dfrac{x_i x_{i'}}{\sum_{j=1}^n x_j^2}$.
+
+\section*{Question 8: Simple Linear Regression}
+We fit the model
+\[
+\text{mpg} = \beta_0 + \beta_1 \cdot \text{horsepower} + \varepsilon.
+\]
+
+\subsection*{(a) Model summary and interpretation}
+\begin{itemize}
+  \item \textbf{Relationship:} The p-value for horsepower is $7.03\times 10^{-81}$, indicating a statistically significant relationship.
+  \item \textbf{Strength:} $R^2 = 0.6059$, so horsepower explains about 60.6\% of the variability in mpg.
+  \item \textbf{Direction:} The slope is negative ($\hat\beta_1 = -0.1578$), so higher horsepower is associated with lower mpg.
+  \item \textbf{Prediction at horsepower = 98:} $\widehat{\text{mpg}} = 24.47$.
+  \begin{itemize}
+    \item 95\% confidence interval for mean response: [23.97, 24.96]
+    \item 95\% prediction interval for a new observation: [14.81, 34.12]
+  \end{itemize}
+\end{itemize}
+
+\subsection*{(b) Scatter plot with regression line}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{q8b_regression_plot.png}
+  \caption{MPG vs. horsepower with least squares regression line.}
+\end{figure}
+
+\subsection*{(c) Diagnostic plots}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{q8c_diagnostic_plots.png}
+  \caption{Diagnostic plots for the simple linear regression.}
+\end{figure}
+
+\textbf{Comments:} The residuals show mild patterns and increasing spread at higher fitted values, suggesting some nonlinearity and heteroscedasticity. The Q--Q plot is close to linear in the center but deviates in the tails, indicating slight non-normality.
+
+\section*{Question 9: Multiple Linear Regression}
+We fit the model
+\[
+\text{mpg} = \beta_0 + \beta_1\,\text{cylinders} + \beta_2\,\text{displacement} + \beta_3\,\text{horsepower} + \beta_4\,\text{weight} + \beta_5\,\text{acceleration} + \beta_6\,\text{year} + \beta_7\,\text{origin} + \varepsilon.
+\]
+
+\subsection*{(a) Scatterplot matrix}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{q9a_scatterplot_matrix.png}
+  \caption{Scatterplot matrix of numeric variables in the Auto dataset.}
+\end{figure}
+
+\subsection*{(b) Correlation matrix}
+Strong negative correlations exist between mpg and displacement/weight/horsepower. Many predictors are also highly correlated with each other, indicating potential multicollinearity.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{q9b_correlation_heatmap.png}
+  \caption{Correlation heatmap for numeric variables.}
+\end{figure}
+
+\subsection*{(c) Multiple regression summary}
+The overall model fit is strong: $R^2 = 0.8215$ and adjusted $R^2 = 0.8182$.
+Statistically significant predictors (p $<$ 0.05) are:
+\begin{itemize}
+  \item displacement (p = 0.0084)
+  \item weight (p $<$ 0.0001)
+  \item year (p $<$ 0.0001)
+  \item origin (p $<$ 0.0001)
+\end{itemize}
+The condition number is large (8.59$\times 10^4$), suggesting multicollinearity among predictors.
+
+\subsection*{(d) Diagnostic plots and leverage}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{q9d_diagnostic_plots_multi.png}
+  \caption{Diagnostic plots for the multiple linear regression.}
+\end{figure}
+
+High leverage points (leverage $>$ $3\times$ mean) were identified at indices: 8, 13, 26, 27, 28. The residual plots show mild heteroscedasticity and some tail deviations in the Q--Q plot.
+
+\subsection*{(e) Interaction effects}
+Interaction models tested:
+\begin{itemize}
+  \item displacement $\times$ weight: significant (p $<$ 0.0001)
+  \item horsepower $\times$ weight: significant (p $<$ 0.0001)
+  \item acceleration $\times$ year: not significant (p = 0.5473)
+\end{itemize}
+Thus, interactions involving weight appear important.
+
+\subsection*{(f) Transformations}
+Several transformations were tested; the best improvement was obtained with $\log(\text{weight})$.
+\begin{itemize}
+  \item Original $R^2$: 0.8215
+  \item $\log(\text{weight})$ model $R^2$: 0.8459 (improvement of 0.0245)
+\end{itemize}
+This suggests a log transformation of weight better captures nonlinearity and improves fit.
+
+\section*{Conclusion}
+Simple linear regression shows a strong negative relationship between horsepower and mpg. Multiple regression improves explanatory power, highlighting weight, year, origin, and displacement as key predictors. Diagnostics indicate mild heteroscedasticity and tail non-normality, while interaction and transformation analyses suggest that weight-related nonlinear effects are important.
+
+\end{document}

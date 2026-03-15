@@ -1,0 +1,6 @@
+Rows: 777
+Columns: 18 (excluding college name)
+Private counts: {'Yes': 565, 'No': 212}
+Elite counts (Top10perc > 50): {'Yes': 78, 'No': 699}
+Outstate by Private: {'Yes': {'Min': 2340.0, 'Q1': 9100.0, 'Median': 11200.0, 'Q3': 13970.0, 'Max': 21700.0}, 'No': {'Min': 2580.0, 'Q1': 5366.0, 'Median': 6609.0, 'Q3': 7844.0, 'Max': 15732.0}}
+Outstate by Elite: {'No': {'Min': 2340.0, 'Q1': 7070.0, 'Median': 9556.0, 'Q3': 12155.0, 'Max': 21700.0}, 'Yes': {'Min': 5224.0, 'Q1': 12219.0, 'Median': 16950.0, 'Q3': 18411.5, 'Max': 20100.0}}

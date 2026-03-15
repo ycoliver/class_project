@@ -17,3 +17,8 @@ weather/*
 deep_learning/hw_2/TASTE-SpokenLM/*
 deep_learning/hw_2/datasets/*
 data_visual/*
+*.png
+*.json
+*.csv
+*.pth
+*.zipcv/DaiXunlian_assignment1/results/task3_unet_aug.pth

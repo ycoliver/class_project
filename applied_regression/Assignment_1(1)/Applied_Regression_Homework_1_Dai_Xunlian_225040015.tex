@@ -1,0 +1,286 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{array}
+\usepackage{hyperref}
+
+\sisetup{
+  round-mode=places,
+  round-precision=3,
+  group-separator={,},
+  group-minimum-digits=4
+}
+
+\title{Applied Regression Homework 1 225040015}
+\author{Dai Xunlian\\Student ID: 225040015\\225040015@link.cuhk.edu.cn}
+\date{January 2026}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This report presents the conceptual answers and applied analyses for Homework 1.
+All numerical results below are based on the provided computations.
+
+\section{Conceptual}
+\subsection*{1. (a)--(d)}
+\begin{itemize}
+  \item (a) \textbf{Flexible} is better: $n$ large, $p$ small, low overfitting risk, and flexible models can approximate the true relationship.
+  \item (b) \textbf{Inflexible} is better: $p$ large, $n$ small, flexible models have high variance and overfit.
+  \item (c) \textbf{Flexible} is better: the relationship is highly nonlinear and needs flexibility to capture curvature.
+  \item (d) \textbf{Inflexible} is better: noise variance is high, so flexible models chase noise and increase variance.
+\end{itemize}
+
+\subsection*{3. Bias--Variance}
+\paragraph{(a) Shape of curves (low $\to$ high flexibility).}
+\begin{itemize}
+  \item Bias$^2$: monotonically decreasing.
+  \item Variance: monotonically increasing.
+  \item Training error: monotonically decreasing.
+  \item Test error: decreases first, then increases (U-shaped).
+  \item Bayes error: flat (constant).
+\end{itemize}
+
+\paragraph{(b) Explanation.}
+Increasing flexibility fits the training data more closely, lowering training error and bias.
+However, it also makes the model more sensitive to sample fluctuations, increasing variance.
+Test error combines bias$^2$, variance, and irreducible error, so it falls initially (bias reduction dominates)
+and then rises when variance dominates. Bayes error depends only on noise and is unrelated to model choice.
+
+\section{Applied 8: College Dataset}
+\subsection*{(a) Read data}
+\texttt{college <- read.csv("College.csv")}
+
+\subsection*{(b) Set row names and drop school name column}
+\texttt{rownames(college) <- college[,1]} \\
+\texttt{college <- college[,-1]}
+
+\subsection*{(c)(i) Summary statistics}
+Table \ref{tab:college-summary} reports the minimum, quartiles, median, mean, and maximum of each numeric variable.
+
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{l S S S S S S}
+\caption{Summary of numeric variables in the College dataset}\label{tab:college-summary}\\
+\toprule
+Variable & {Min} & {Q1} & {Median} & {Mean} & {Q3} & {Max} \\
+\midrule
+\endfirsthead
+\toprule
+Variable & {Min} & {Q1} & {Median} & {Mean} & {Q3} & {Max} \\
+\midrule
+\endhead
+Apps & 81 & 776 & 1558 & 3001.64 & 3624 & 48094 \\
+Accept & 72 & 604 & 1110 & 2018.8 & 2424 & 26330 \\
+Enroll & 35 & 242 & 434 & 779.973 & 902 & 6392 \\
+Top10perc & 1 & 15 & 23 & 27.5586 & 35 & 96 \\
+Top25perc & 9 & 41 & 54 & 55.7967 & 69 & 100 \\
+F.Undergrad & 139 & 992 & 1707 & 3699.91 & 4005 & 31643 \\
+P.Undergrad & 1 & 95 & 353 & 855.299 & 967 & 21836 \\
+Outstate & 2340 & 7320 & 9990 & 10440.7 & 12925 & 21700 \\
+Room.Board & 1780 & 3597 & 4200 & 4357.53 & 5050 & 8124 \\
+Books & 96 & 470 & 500 & 549.381 & 600 & 2340 \\
+Personal & 250 & 850 & 1200 & 1340.64 & 1700 & 6800 \\
+PhD & 8 & 62 & 75 & 72.6602 & 85 & 103 \\
+Terminal & 24 & 71 & 82 & 79.7027 & 92 & 100 \\
+S.F.Ratio & 2.5 & 11.5 & 13.6 & 14.0897 & 16.5 & 39.8 \\
+perc.alumni & 0 & 13 & 21 & 22.7439 & 31 & 64 \\
+Expend & 3186 & 6751 & 8377 & 9660.17 & 10830 & 56233 \\
+Grad.Rate & 10 & 53 & 65 & 65.4633 & 78 & 118 \\
+\bottomrule
+\end{longtable}
+
+\noindent Private counts: Yes = 565, No = 212.
+
+\subsection*{(c)(ii) Pair plots (first 10 variables)}
+From the scatterplot matrix:
+\begin{itemize}
+  \item \texttt{Apps--Accept--Enroll--F.Undergrad} show strong positive correlations.
+  \item \texttt{Top10perc--Top25perc} shows a strong positive correlation.
+  \item \texttt{Outstate} is positively related to \texttt{Expend} and \texttt{Top10perc}.
+\end{itemize}
+
+\subsection*{(c)(iii) Outstate vs Private}
+Private schools have clearly higher out-of-state tuition.
+Table \ref{tab:college-outstate} summarizes \texttt{Outstate} by group.
+
+\begin{table}[h]
+\centering
+\caption{Outstate tuition by group}
+\label{tab:college-outstate}
+\begin{tabular}{l S S S S S}
+\toprule
+Group & {Min} & {Q1} & {Median} & {Q3} & {Max} \\
+\midrule
+Private=Yes & 2340 & 9100 & 11200 & 13970 & 21700 \\
+Private=No & 2580 & 5366 & 6609 & 7844 & 15732 \\
+Elite=Yes & 5224 & 12219 & 16950 & 18411.5 & 20100 \\
+Elite=No & 2340 & 7070 & 9556 & 12155 & 21700 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{(c)(iv) Elite indicator}
+Define \texttt{Elite} by \texttt{Top10perc} $>$ 50.
+Counts: Yes = 78, No = 699.
+Elite schools have much higher \texttt{Outstate} tuition (median 16{,}950 vs 9{,}556).
+
+\subsection*{(c)(v) Histograms}
+The distributions of \texttt{Apps}, \texttt{Enroll}, \texttt{F.Undergrad}, and \texttt{Expend} are strongly right-skewed.
+\texttt{Outstate} is moderately right-skewed, and \texttt{Grad.Rate} has a few values above 100.
+
+\subsection*{(c)(vi) Summary}
+\begin{itemize}
+  \item Private and Elite schools tend to have higher out-of-state tuition.
+  \item \texttt{Apps--Accept--Enroll--F.Undergrad} form the strongest size-related cluster.
+  \item \texttt{Top10perc} and \texttt{Top25perc} are highly correlated, indicating consistent student quality measures.
+  \item \texttt{Expend} is positively related to \texttt{Outstate} and \texttt{Top10perc}, suggesting resources and student quality move together.
+\end{itemize}
+
+\subsection*{Correlation highlights}
+Table \ref{tab:college-corr} lists several variable pairs with high absolute correlations.
+
+\begin{table}[h]
+\centering
+\caption{Highly correlated variable pairs in the College dataset}
+\label{tab:college-corr}
+\begin{tabular}{l l S}
+\toprule
+Variable 1 & Variable 2 & {Correlation} \\
+\midrule
+Enroll & F.Undergrad & 0.9646 \\
+Apps & Accept & 0.9435 \\
+Accept & Enroll & 0.9116 \\
+Top10perc & Top25perc & 0.8920 \\
+PhD & Terminal & 0.8496 \\
+Outstate & Expend & 0.6728 \\
+S.F.Ratio & Expend & -0.5838 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Enrollment scale variables are strongly positively correlated. Spending (\texttt{Expend}) is positively correlated
+with \texttt{Outstate}, while student-faculty ratio is negatively correlated with spending.
+
+\section{Applied 10: Boston Dataset}
+\subsection*{(a) Basic information}
+\texttt{dim(Boston)} = 506 rows and 14 columns (13 predictors + \texttt{medv}).
+
+\subsection*{(b) Pairwise scatterplots}
+Key relationships from the scatterplot matrix:
+\begin{itemize}
+  \item \texttt{rad--tax} is extremely positively correlated (about 0.91).
+  \item \texttt{indus--nox} is positively correlated; \texttt{dis--nox} is negatively correlated.
+  \item \texttt{rm--medv} is positively correlated; \texttt{lstat--medv} is strongly negatively correlated.
+  \item \texttt{age--dis} is negatively correlated.
+\end{itemize}
+
+\subsection*{(c) Correlation with crime rate}
+Variables most correlated with \texttt{crim} (by absolute value):
+
+\begin{table}[h]
+\centering
+\caption{Correlation with \texttt{crim} in the Boston dataset}
+\label{tab:boston-corr}
+\begin{tabular}{l S}
+\toprule
+Variable & {Correlation} \\
+\midrule
+rad & 0.626 \\
+tax & 0.583 \\
+lstat & 0.456 \\
+nox & 0.421 \\
+indus & 0.407 \\
+medv & -0.388 \\
+b & -0.385 \\
+dis & -0.380 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{(d) Extremes and ranges}
+Maximum \texttt{crim} = 88.9762 (row 381), maximum \texttt{tax} = 711 (row 489),
+and maximum \texttt{ptratio} = 22 (row 355).
+Table \ref{tab:boston-range} summarizes each variable's range.
+
+\begin{table}[h]
+\centering
+\caption{Variable ranges in the Boston dataset}
+\label{tab:boston-range}
+\begin{tabular}{l S S}
+\toprule
+Variable & {Min} & {Max} \\
+\midrule
+crim & 0.00632 & 88.9762 \\
+zn & 0 & 100 \\
+indus & 0.46 & 27.74 \\
+chas & 0 & 1 \\
+nox & 0.385 & 0.871 \\
+rm & 3.561 & 8.78 \\
+age & 2.9 & 100 \\
+dis & 1.1296 & 12.1265 \\
+rad & 1 & 24 \\
+tax & 187 & 711 \\
+ptratio & 12.6 & 22 \\
+b & 0.32 & 396.9 \\
+lstat & 1.73 & 37.97 \\
+medv & 5 & 50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{(e) Charles River}
+\texttt{sum(Boston\$chas == 1)} = 35.
+
+\subsection*{(f) Median pupil--teacher ratio}
+\texttt{median(Boston\$ptratio)} = 19.05.
+
+\subsection*{(g) Minimum-\texttt{medv} tract}
+The minimum \texttt{medv} is 5.0 at row 399. Its characteristics are listed in Table \ref{tab:boston-minmedv}.
+
+\begin{table}[h]
+\centering
+\caption{Variables for the minimum-\texttt{medv} tract}
+\label{tab:boston-minmedv}
+\begin{tabular}{l S}
+\toprule
+Variable & {Value} \\
+\midrule
+crim & 38.3518 \\
+zn & 0 \\
+indus & 18.1 \\
+chas & 0 \\
+nox & 0.693 \\
+rm & 5.453 \\
+age & 100 \\
+dis & 1.4896 \\
+rad & 24 \\
+tax & 666 \\
+ptratio & 20.2 \\
+b & 396.9 \\
+lstat & 30.59 \\
+medv & 5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent This tract has high \texttt{crim}, \texttt{nox}, \texttt{tax}, \texttt{ptratio}, and \texttt{lstat},
+with low \texttt{rm} and \texttt{dis}, consistent with older, polluted, and less affluent areas.
+
+\subsection*{(h) Counts of large houses}
+\texttt{sum(Boston\$rm > 7)} = 64 and \texttt{sum(Boston\$rm > 8)} = 13.
+Tracts with \texttt{rm} $>$ 8 tend to have higher housing prices and lower \texttt{lstat}.
+
+\section{Conclusion}
+\begin{itemize}
+  \item Conceptual results highlight the bias--variance tradeoff and when flexible vs.\ inflexible models are preferred.
+  \item In the College data, private and Elite schools show higher out-of-state tuition, and enrollment-related
+  variables are strongly correlated.
+  \item In the Boston data, crime rate is positively related to accessibility and tax rate, and negatively
+  related to housing prices and distance; the minimum-\texttt{medv} tract exhibits extreme values.
+\end{itemize}
+
+\end{document}

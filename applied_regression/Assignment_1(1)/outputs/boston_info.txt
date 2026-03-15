@@ -1,0 +1,10 @@
+Rows: 506
+Columns: 14
+Max crim: 88.9762 (row 381)
+Max tax: 711.0 (row 489)
+Max ptratio: 22.0 (row 355)
+chas == 1 count: 35
+Median ptratio: 19.05
+Min medv: 5.0 (row 399)
+rm > 7: 64
+rm > 8: 13
